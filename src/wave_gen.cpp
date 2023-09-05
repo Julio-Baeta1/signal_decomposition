@@ -1,11 +1,23 @@
 #include "wave_gen.h"
 
-WaveGen::WaveGen(int length, double start, double end)
+WaveGen::WaveGen(int length, double start)
 //Utilises built in linspace to build base signal for all signals
 // size is the same for all signals generated from this Wave generator
 {
     size = length;
-    domain_sig = Eigen::VectorXd::LinSpaced(length,start,end);
+    domain_sig = Eigen::VectorXd::LinSpaced(length,start,start+length);
+}
+
+void WaveGen::setDomain(int new_size, double new_start)
+{
+        if(size == 0)
+        {
+                size = new_size;
+                domain_sig = Eigen::VectorXd::LinSpaced(size,new_start,new_start+size);
+        }
+        else
+                throw std::invalid_argument("The domain of WaveGen object is already set");
+           
 }
 
 Eigen::VectorXd WaveGen::dcWave(double amp)
@@ -16,7 +28,7 @@ Eigen::VectorXd WaveGen::dcWave(double amp)
  Eigen::VectorXd WaveGen::sinWave(double amp, double period)
 {
         double freq = 1/period;
-        Eigen::VectorXd wave = (2.0 * EIGEN_PI* freq *domain_sig);
+        Eigen::VectorXd wave = (2.0 * EIGEN_PI* freq *this->domain_sig);
         wave = wave.array().sin();
         return wave;
 } 
@@ -24,7 +36,7 @@ Eigen::VectorXd WaveGen::dcWave(double amp)
  Eigen::VectorXd WaveGen::cosWave(double amp, double period)
 {
         double freq = 1/period;
-        Eigen::VectorXd wave = (2.0 * EIGEN_PI* freq *this->domain_sig);
+        Eigen::VectorXd wave = (2.0 * EIGEN_PI* freq * this->domain_sig);
         wave = wave.array().cos();
         return wave;
 } 
@@ -58,9 +70,9 @@ Eigen::VectorXd WaveGen::dcWave(double amp)
         int p = static_cast<int>( period ); //convert period to int to ensure modulus arthmetic is correct
 
         for(int i=0; i<size; i++)
-                wave[i] = amp * (abs(2*(i%p)/period - 1)-1); 
-                //modulus by p and divide by period/2 to get range 0->~2. Subtract one and take absolute value to get range 0->1 with
-                //minumum (0) in the middle and maximum (1) on left.
+                wave[i] = amp* (2*abs(2*(i%p)/period - 1)-1); 
+                //modulus by p, divide by period/2 and subtract 1 to get range -1->0 with 0 occuring in the middle. Take absolute value
+                //so the range is know 0->1. Multiply by 2 and subtract 1 so it is from -1->1, which can be scaled by the amplitude
 
         return wave;
 } 
@@ -68,9 +80,15 @@ Eigen::VectorXd WaveGen::dcWave(double amp)
 Eigen::VectorXd WaveGen::genWave(double amplitude, double period, std::string opt)
 //Select which wave to generate
 {
-    if (period == 0 || opt == "dc")
-        return dcWave(amplitude);
+    if(this->size == 0)
+        throw std::length_error("Wavegen object of size zero");
 
+    
+    if (period == 0)
+        opt = "dc";
+
+    if (opt == "dc")
+        return dcWave(amplitude);
     if (opt == "sin")
         return sinWave(amplitude,period);
     if (opt == "cos")
@@ -81,7 +99,8 @@ Eigen::VectorXd WaveGen::genWave(double amplitude, double period, std::string op
         return sawtoothWave(amplitude,period);
     if (opt == "triangle")
         return triangleWave(amplitude,period);
+    
 
-    return Eigen::VectorXd::Zero(this->size);
+    throw std::invalid_argument("invalid option \""+opt+"\" entered");
     
 }

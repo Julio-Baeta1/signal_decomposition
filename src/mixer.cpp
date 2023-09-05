@@ -60,12 +60,23 @@ int main(int argc, char *argv[])
     //srand( (int)(time(0)) );
     //freq = freqs[i];//rand()% max;
 
-    //Currently very simple waveform generation of 4 types
-    WaveGen wave_gen(n,0,n);
-    mat.row(0) = wave_gen.genWave(1,12,"sin");
-    mat.row(1) = wave_gen.genWave(2,10,"square");
-    mat.row(2) = wave_gen.genWave(1.5,20,"sawtooth");
-    mat.row(3) = wave_gen.genWave(4,6,"triangle");
+    try{
+        WaveGen wave_gen;
+        wave_gen.setDomain(n,0);
+        //wave_gen.setDomain(n,0);
+        //WaveGen wave_gen(n,0);
+        //mat.row(0) = wave_gen.genWave(1,12,"si");
+        mat.row(0) = wave_gen.genWave(1,16,"sin");
+        mat.row(1) = wave_gen.genWave(2,10,"square");
+        mat.row(2) = wave_gen.genWave(1,5,"sawtooth");
+        mat.row(3) = wave_gen.genWave(3,6,"triangle");
+    }
+    catch(std::length_error const& e){
+        std::cout << "Exception: " << e.what() << std::endl;
+    }
+    catch(std::invalid_argument const& e){
+        std::cout << "Exception: " << e.what() << std::endl;
+    }
 
 
     saveData("output.csv", &mat);

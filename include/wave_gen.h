@@ -13,6 +13,7 @@ class WaveGen{
     private:
         Eigen::VectorXd domain_sig;
         size_t size;
+
         Eigen::VectorXd dcWave(double amp);
         Eigen::VectorXd sinWave(double amp, double period);
         Eigen::VectorXd cosWave(double amp, double period);
@@ -21,8 +22,13 @@ class WaveGen{
         Eigen::VectorXd triangleWave(double amp, double period);
         
     public:
-        WaveGen(int length=0, double start=0, double end=100);
+        WaveGen(int length=0, double start=0);
+
         Eigen::VectorXd genWave(double amplitude, double period, std::string opt);
+
+        void setDomain(int new_size, double new_start);
+        size_t len() const {return size;}
+        
 };
 
 
