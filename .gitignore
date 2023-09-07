@@ -1,5 +1,7 @@
 *.vscode
 /src/mixer.exe
 /src/output.csv
+/src/testing_main.cpp
+/src/old_mixer.cpp
 /tests/build/
 myInstructs.txt

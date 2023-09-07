@@ -2,7 +2,7 @@
 #include <Eigen/Dense>
 #include "../include/wave_gen.h"
 
-// Demonstrate some basic assertions.
+
 TEST(WaveGenTest, DefaultConstructor) {
   WaveGen gen_default;
   size_t len = gen_default.len();
