@@ -9,6 +9,12 @@ options = [sin, cos, square, triangular, sawtooth]*/
 #include<string>
 #include<iostream>
 
+namespace SigGen{
+
+enum class SignalType{
+    dc=0,sin,cos,square,sawtooth,triangle, size
+};
+
 class WaveGen{
     private:
         Eigen::VectorXd domain_sig;
@@ -25,11 +31,13 @@ class WaveGen{
         WaveGen(int length=0, double start=0);
 
         Eigen::VectorXd genWave(double amplitude, double period, std::string opt);
+        Eigen::VectorXd genRandomWave(int max_amp, int max_period);
 
         void setDomain(int new_size, double new_start);
         size_t len() const {return size;}
         
 };
 
+}//End SigGen
 
 #endif

@@ -1,5 +1,7 @@
 #include "wave_gen.h"
 
+namespace SigGen{
+
 WaveGen::WaveGen(int length, double start)
 //Utilises built in linspace to build base signal for all signals
 // size is the same for all signals generated from this Wave generator
@@ -104,3 +106,36 @@ Eigen::VectorXd WaveGen::genWave(double amplitude, double period, std::string op
     throw std::invalid_argument("invalid option \""+opt+"\" entered");
     
 }
+
+Eigen::VectorXd WaveGen::genRandomWave(int max_amp, int max_period)
+//Select which wave to generate
+{
+    if(this->size == 0)
+        throw std::length_error("Wavegen object of size zero");
+
+    SignalType rand_wave = static_cast<SignalType>(  rand() % static_cast<int>(SignalType::size) );
+    int rand_period = (rand()%max_period)+1; 
+    int rand_amp = (rand()%max_amp+1)+1;
+    
+    switch (rand_wave){ 
+    
+        case SignalType::dc:
+                return dcWave(rand_amp);
+        case SignalType::sin:
+                return sinWave(rand_amp,rand_period);
+        case SignalType::cos:
+                return cosWave(rand_amp,rand_period);
+        case SignalType::square:
+                return squareWave(rand_amp,rand_period);
+        case SignalType::sawtooth:
+                return sawtoothWave(rand_amp,rand_period);
+        case SignalType::triangle:
+                return triangleWave(rand_amp,rand_period);
+
+        default:
+                throw std::invalid_argument("Random signal generator selected a none SignalType option");
+    }
+    
+}
+
+}//End SigGen namespace

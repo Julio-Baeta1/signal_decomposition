@@ -1,11 +1,5 @@
 #include"mixer.h"
 
-namespace Mixing{
-
-    //srand( (int)(time(0)) );
-    //freq = freqs[i];//rand()% max;
-    //mat.row(0) = wave_gen.genWave(1,16,"sin");
-
 Mixer::Mixer(int num_signals, int signal_duration, Eigen::MatrixXd mixing_matrix, bool is_noisy)
 {
     num_sigs = num_signals;
@@ -19,7 +13,16 @@ Mixer::Mixer(int num_signals, int signal_duration, Eigen::MatrixXd mixing_matrix
 
 void Mixer::genSignals()
 {
-    int x=0;
+    //srand( (int)(time(0)) );
+    //freq = freqs[i];//rand()% max;
+    srand(6);
+    SigGen::WaveGen waves(num_samples,0);
+
+    for(int i=0; i<num_sigs; i++)
+    {
+        raw_sigs.row(i) = waves.genRandomWave(2,100);
+    }
+
 }
 
 void Mixer::setMixingMatrix()
@@ -30,6 +33,4 @@ void Mixer::setMixingMatrix()
 void mixSignals()
 {
     int x=0;
-}
-
 }
