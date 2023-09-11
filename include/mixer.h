@@ -1,6 +1,7 @@
 #ifndef MIXER_H
 #define MIXER_H
 
+#include <random>
 #include"wave_gen.h"
 
 class Mixer{
@@ -16,6 +17,9 @@ class Mixer{
         Eigen::MatrixXd getMixedSignals() const {return mixed_sigs;}
         Eigen::MatrixXd getMixingMatrix() const {return mixing_mat;}
         bool isNoisy() const {return noisy;}
+
+        size_t getNumSignals() const {return num_sigs;}
+        size_t getNumSamples() const {return num_samples;}
 
         void genSignals();
         void setMixingMatrix();

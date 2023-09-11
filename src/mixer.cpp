@@ -14,7 +14,6 @@ Mixer::Mixer(int num_signals, int signal_duration, Eigen::MatrixXd mixing_matrix
 void Mixer::genSignals()
 {
     //srand( (int)(time(0)) );
-    //freq = freqs[i];//rand()% max;
     srand(6);
     SigGen::WaveGen waves(num_samples,0);
 
@@ -30,7 +29,19 @@ void Mixer::setMixingMatrix()
     int x=0;
 }
 
-void mixSignals()
+void Mixer::mixSignals()
 {
-    int x=0;
+    if(noisy)
+    {
+        std::mt19937 r_gen (123);
+        std::normal_distribution<double> r_dis(0.0, 1.0);
+        auto norm = [&] () {return r_dis(r_gen);};
+
+        Eigen::MatrixXd v = Eigen::MatrixXd::NullaryExpr(num_sigs,num_samples, norm );
+        v += raw_sigs;
+
+        mixed_sigs = mixing_mat*v;
+    }
+    else
+        mixed_sigs = mixing_mat*raw_sigs;
 }

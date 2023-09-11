@@ -12,7 +12,7 @@ options = [sin, cos, square, triangular, sawtooth]*/
 namespace SigGen{
 
 enum class SignalType{
-    dc=0,sin,cos,square,sawtooth,triangle, size
+    dc=0,sin,cos,square,sawtooth,triangle, size //size is used to get number of elements in SignalType enum class
 };
 
 class WaveGen{

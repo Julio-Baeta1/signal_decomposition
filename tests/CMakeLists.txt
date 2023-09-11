@@ -25,6 +25,7 @@ add_executable(
   signal_decomposition_test
   signal_decomposition_test.cc
   ../src/wave_gen.cpp
+  ../src/mixer.cpp
 )
 
 #target_include_directories(exe_name PUBLIC "Path/To/Headers")

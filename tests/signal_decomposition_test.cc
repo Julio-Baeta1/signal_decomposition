@@ -1,7 +1,12 @@
 #include <gtest/gtest.h>
 #include <Eigen/Dense>
 #include "../include/wave_gen.h"
+#include "../include/mixer.h"
 
+using namespace SigGen;
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//wave_gen
 
 TEST(WaveGenTest, DefaultConstructor) {
   WaveGen gen_default;
@@ -96,6 +101,49 @@ TEST(WaveGenTest, GenerateWaveUsingZeroSizeWaveGen) {
     Eigen::VectorXd test_wave = gen_parm.genWave(1,0,"cos");
     ,std::length_error);
 }
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//mixer
+
+TEST(MixerTest, DefaultConstructor) {
+  Mixer mixer_default;
+  Eigen::MatrixXd zeros_8_by_8 = Eigen::MatrixXd::Zero(8, 8);
+
+  size_t d_num_sigs = mixer_default.getNumSignals();
+  size_t d_num_sams = mixer_default.getNumSamples();
+  Eigen::MatrixXd d_mixing = mixer_default.getMixingMatrix();
+  Eigen::MatrixXd d_raw = mixer_default.getRawSignals();
+  Eigen::MatrixXd d_mixed = mixer_default.getMixedSignals();
+
+  EXPECT_EQ(d_num_sigs,(size_t)8);
+  EXPECT_EQ(d_num_sams,(size_t)8);
+  EXPECT_EQ(d_mixing,Eigen::MatrixXd::Identity(8,8));
+  EXPECT_EQ(d_raw,zeros_8_by_8);
+  EXPECT_EQ(d_mixed,zeros_8_by_8);
+  EXPECT_FALSE(mixer_default.isNoisy());
+  
+}
+
+TEST(MixerTest, ParamaterConstructor) {
+  Eigen::MatrixXd A{{1,2},{3,0.05}};
+  Mixer mixer_parm(2,16,A,true);
+  Eigen::MatrixXd zeros_2_by_16 = Eigen::MatrixXd::Zero(2, 16);
+
+  size_t d_num_sigs = mixer_parm.getNumSignals();
+  size_t d_num_sams = mixer_parm.getNumSamples();
+  Eigen::MatrixXd d_mixing = mixer_parm.getMixingMatrix();
+  Eigen::MatrixXd d_raw = mixer_parm.getRawSignals();
+  Eigen::MatrixXd d_mixed = mixer_parm.getMixedSignals();
+
+  EXPECT_EQ(d_num_sigs,(size_t)2);
+  EXPECT_EQ(d_num_sams,(size_t)16);
+  EXPECT_EQ(d_mixing,A);
+  EXPECT_EQ(d_raw,zeros_2_by_16);
+  EXPECT_EQ(d_mixed,zeros_2_by_16);
+  EXPECT_TRUE(mixer_parm.isNoisy());
+  
+}
+
 
 
 
