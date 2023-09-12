@@ -117,16 +117,15 @@ TEST(MixerTest, DefaultConstructor) {
 
   EXPECT_EQ(d_num_sigs,(size_t)8);
   EXPECT_EQ(d_num_sams,(size_t)8);
-  EXPECT_EQ(d_mixing,Eigen::MatrixXd::Identity(8,8));
+  EXPECT_EQ(d_mixing,zeros_8_by_8);
   EXPECT_EQ(d_raw,zeros_8_by_8);
   EXPECT_EQ(d_mixed,zeros_8_by_8);
-  EXPECT_FALSE(mixer_default.isNoisy());
   
 }
 
 TEST(MixerTest, ParamaterConstructor) {
   Eigen::MatrixXd A{{1,2},{3,0.05}};
-  Mixer mixer_parm(2,16,A,true);
+  Mixer mixer_parm(2,16);
   Eigen::MatrixXd zeros_2_by_16 = Eigen::MatrixXd::Zero(2, 16);
 
   size_t d_num_sigs = mixer_parm.getNumSignals();
@@ -140,7 +139,6 @@ TEST(MixerTest, ParamaterConstructor) {
   EXPECT_EQ(d_mixing,A);
   EXPECT_EQ(d_raw,zeros_2_by_16);
   EXPECT_EQ(d_mixed,zeros_2_by_16);
-  EXPECT_TRUE(mixer_parm.isNoisy());
   
 }
 

@@ -2,28 +2,34 @@
 #define MIXER_H
 
 #include <random>
+#include <memory>
 #include"wave_gen.h"
 
 class Mixer{
     private:
-        Eigen::MatrixXd raw_sigs,mixed_sigs,mixing_mat; //Will make pointers
         size_t num_sigs, num_samples;
-        bool noisy;
+        std::unique_ptr<Eigen::MatrixXd> mixing_mat;
+        std::shared_ptr<Eigen::MatrixXd> raw_sigs,mixed_sigs; 
+        
 
     public:
-        Mixer(int num_signals=8, int signal_duration=8, Eigen::MatrixXd mixing_matrix=Eigen::MatrixXd::Identity(8,8), bool is_noisy=false);
+        Mixer(int num_signals=2, int signal_duration=8);
+        Mixer(int num_signals, int signal_duration, Eigen::MatrixXd A);
 
-        Eigen::MatrixXd getRawSignals() const {return raw_sigs;}
-        Eigen::MatrixXd getMixedSignals() const {return mixed_sigs;}
-        Eigen::MatrixXd getMixingMatrix() const {return mixing_mat;}
-        bool isNoisy() const {return noisy;}
+        Eigen::MatrixXd getRawSignalsValues() const {return *raw_sigs;}
+        Eigen::MatrixXd getMixedSignalsValues() const {return *mixed_sigs;}
+        Eigen::MatrixXd getMixingMatrixValues() const {return *mixing_mat;}
+        std::shared_ptr<Eigen::MatrixXd> getMixedSignalsSharedPtr() {return mixed_sigs;} 
+        std::shared_ptr<Eigen::MatrixXd> getRawSignalsSharedPtr() {return raw_sigs;} 
 
         size_t getNumSignals() const {return num_sigs;}
         size_t getNumSamples() const {return num_samples;}
+        void setNumSignals(int new_num_sigs);
+        void setNumSamples(int new_num_samps);
 
         void genSignals();
-        void setMixingMatrix();
-        void mixSignals();
+        void setMixingMatrix(Eigen::MatrixXd A);
+        void mixSignals(bool noisy);
 };
 
 #endif
