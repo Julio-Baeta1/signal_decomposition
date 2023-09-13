@@ -5,6 +5,9 @@
 
 using namespace SigGen;
 
+constexpr double MIN_PRECISION = 1.0E-6 ; //Used as tolerance for deciding if two matrices are equivalent
+constexpr double MAX_PRECISION = 1.0 ; //If matrices are not equivalent, we want the tolerance to be high for greater certainty
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //wave_gen
 
@@ -107,42 +110,158 @@ TEST(WaveGenTest, GenerateWaveUsingZeroSizeWaveGen) {
 
 TEST(MixerTest, DefaultConstructor) {
   Mixer mixer_default;
-  Eigen::MatrixXd zeros_8_by_8 = Eigen::MatrixXd::Zero(8, 8);
+  Eigen::MatrixXd zeros_2_by_8 = Eigen::MatrixXd::Zero(2, 8);
 
   size_t d_num_sigs = mixer_default.getNumSignals();
   size_t d_num_sams = mixer_default.getNumSamples();
-  Eigen::MatrixXd d_mixing = mixer_default.getMixingMatrix();
-  Eigen::MatrixXd d_raw = mixer_default.getRawSignals();
-  Eigen::MatrixXd d_mixed = mixer_default.getMixedSignals();
+  Eigen::MatrixXd d_mixing = mixer_default.getMixingMatrixValues();
+  Eigen::MatrixXd d_raw = mixer_default.getRawSignalsValues();
+  Eigen::MatrixXd d_mixed = mixer_default.getMixedSignalsValues();
 
-  EXPECT_EQ(d_num_sigs,(size_t)8);
+  EXPECT_EQ(d_num_sigs,(size_t)2);
   EXPECT_EQ(d_num_sams,(size_t)8);
-  EXPECT_EQ(d_mixing,zeros_8_by_8);
-  EXPECT_EQ(d_raw,zeros_8_by_8);
-  EXPECT_EQ(d_mixed,zeros_8_by_8);
+  EXPECT_EQ(d_mixing,Eigen::MatrixXd::Zero(2, 2));
+  EXPECT_EQ(d_raw,zeros_2_by_8);
+  EXPECT_EQ(d_mixed,zeros_2_by_8);
   
 }
 
 TEST(MixerTest, ParamaterConstructor) {
   Eigen::MatrixXd A{{1,2},{3,0.05}};
-  Mixer mixer_parm(2,16);
+  Mixer mixer_parm(2,16,A);
   Eigen::MatrixXd zeros_2_by_16 = Eigen::MatrixXd::Zero(2, 16);
 
   size_t d_num_sigs = mixer_parm.getNumSignals();
   size_t d_num_sams = mixer_parm.getNumSamples();
-  Eigen::MatrixXd d_mixing = mixer_parm.getMixingMatrix();
-  Eigen::MatrixXd d_raw = mixer_parm.getRawSignals();
-  Eigen::MatrixXd d_mixed = mixer_parm.getMixedSignals();
+  Eigen::MatrixXd d_mixing = mixer_parm.getMixingMatrixValues();
+  Eigen::MatrixXd d_raw = mixer_parm.getRawSignalsValues();
+  Eigen::MatrixXd d_mixed = mixer_parm.getMixedSignalsValues();
 
   EXPECT_EQ(d_num_sigs,(size_t)2);
   EXPECT_EQ(d_num_sams,(size_t)16);
   EXPECT_EQ(d_mixing,A);
   EXPECT_EQ(d_raw,zeros_2_by_16);
   EXPECT_EQ(d_mixed,zeros_2_by_16);
-  
 }
 
+TEST(MixerTest, SetMixingMatrix) {
+  Mixer mixer_default;
+  Eigen::MatrixXd A{{1,2},{3,0.05}};
+  mixer_default.setMixingMatrix(A);
+  Eigen::MatrixXd d_mixing = mixer_default.getMixingMatrixValues();
 
+  EXPECT_EQ(d_mixing,A);
+}
 
+TEST(MixerTest, SetMixingMatrixIncorrectDims) {
+  Mixer mixer_default;
+  Eigen::MatrixXd A{{1,2,3},{4,5,6},{7,8,9}};
+  
+  EXPECT_THROW(
+    mixer_default.setMixingMatrix(A);
+    ,std::invalid_argument);
+}
 
+TEST(MixerTest, SetNumSignals) {
+  Eigen::MatrixXd A{{1,2},{3,0.05}};
+  Mixer mixer_parm(2,16,A);
+  mixer_parm.setNumSignals(3);
 
+  size_t d_num_sigs = mixer_parm.getNumSignals();
+  size_t d_num_sams = mixer_parm.getNumSamples();
+  Eigen::MatrixXd d_mixing = mixer_parm.getMixingMatrixValues();
+  Eigen::MatrixXd d_raw = mixer_parm.getRawSignalsValues();
+  Eigen::MatrixXd d_mixed = mixer_parm.getMixedSignalsValues();
+
+  EXPECT_EQ(d_num_sigs,(size_t)3);
+  EXPECT_EQ(d_num_sams,(size_t)16);
+  EXPECT_EQ(d_mixing,Eigen::MatrixXd::Zero(2, 3));
+  EXPECT_EQ(d_raw,Eigen::MatrixXd::Zero(3, 16));
+  EXPECT_EQ(d_mixed,Eigen::MatrixXd::Zero(2, 16));
+}
+
+TEST(MixerTest, SetNumSamples) {
+  Eigen::MatrixXd A{{1,2},{3,0.05}};
+  Mixer mixer_parm(2,16,A);
+  mixer_parm.setNumSamples(5);
+
+  size_t d_num_sigs = mixer_parm.getNumSignals();
+  size_t d_num_sams = mixer_parm.getNumSamples();
+  Eigen::MatrixXd d_mixing = mixer_parm.getMixingMatrixValues();
+  Eigen::MatrixXd d_raw = mixer_parm.getRawSignalsValues();
+  Eigen::MatrixXd d_mixed = mixer_parm.getMixedSignalsValues();
+
+  EXPECT_EQ(d_num_sigs,(size_t)2);
+  EXPECT_EQ(d_num_sams,(size_t)5);
+  EXPECT_EQ(d_mixing,A);
+  EXPECT_EQ(d_raw,Eigen::MatrixXd::Zero(2, 5));
+  EXPECT_EQ(d_mixed,Eigen::MatrixXd::Zero(2, 5));
+}
+
+TEST(MixerTest, SetNumSignalsInvalidSize) {
+  Eigen::MatrixXd A{{1,2},{3,0.05}};
+  Mixer mixer_parm(2,16,A);
+  
+  EXPECT_THROW(
+    mixer_parm.setNumSignals(0);
+    ,std::invalid_argument);
+
+}
+
+TEST(MixerTest, SetNumSamplesInvalidSize) {
+  Eigen::MatrixXd A{{1,2},{3,0.05}};
+  Mixer mixer_parm(2,16,A);
+
+  EXPECT_THROW(
+    mixer_parm.setNumSamples(-5);
+    ,std::invalid_argument);
+
+}
+
+TEST(MixerTest, GenerateRawSignals) {
+  Mixer mixer_parm(4,4);
+
+  mixer_parm.genSignals(6);
+  Eigen::MatrixXd* gen_sigs = mixer_parm.getRawSignalsSharedPtr().get();
+  //Eigen::MatrixXd gen_sigs = mixer_parm.getRawSignalsValues();
+  Eigen::MatrixXd exp_sigs{{0, 0.0410959, 0.0821918,  0.123288},
+                           {0,  0.930874,  0.680173, -0.433884},
+                           {0, 0.0909091,  0.181818,  0.272727},
+                           {1,  0.992193,  0.968893,  0.930465}};
+
+  EXPECT_TRUE(exp_sigs.isApprox(*gen_sigs,MIN_PRECISION)); //second arg (p) percision tolerance ∥v−w∥ ⩽ p min(∥v∥,∥w∥)
+}
+
+TEST(MixerTest, MixSignalsNoNoise) {
+  Eigen::MatrixXd A{{0.1,0.3,0.15,0.95},{0.4,0.5,0.6,0.5},{0.07,1.2,0.01,0.9},{0.01,0.85,0.15,0.23}};
+  Mixer mixer_parm(4,4,A);
+
+  mixer_parm.genSignals(6);
+  mixer_parm.mixSignals(false,123);
+  Eigen::MatrixXd* mixed = mixer_parm.getMixedSignalsSharedPtr().get();
+
+  Eigen::MatrixXd exp_mixed{{0, 0.0410959, 0.0821918,  0.123288},
+                           {0,  0.930874,  0.680173, -0.433884},
+                           {0, 0.0909091,  0.181818,  0.272727},
+                           {1,  0.992193,  0.968893,  0.930465}};
+  exp_mixed = A*exp_mixed; 
+
+  EXPECT_TRUE(exp_mixed.isApprox(*mixed,MIN_PRECISION)); //second arg (p) percision tolerance ∥v−w∥ ⩽ p min(∥v∥,∥w∥)
+}
+
+TEST(MixerTest, MixSignalsWithNoise) {
+  Eigen::MatrixXd A{{0.1,0.3,0.15,0.95},{0.4,0.5,0.6,0.5},{0.07,1.2,0.01,0.9},{0.01,0.85,0.15,0.23}};
+  Mixer mixer_parm(4,4,A);
+
+  mixer_parm.genSignals(6);
+  mixer_parm.mixSignals(true,123);
+  Eigen::MatrixXd* mixed = mixer_parm.getMixedSignalsSharedPtr().get();
+
+  Eigen::MatrixXd exp_mixed{{0, 0.0410959, 0.0821918,  0.123288},
+                           {0,  0.930874,  0.680173, -0.433884},
+                           {0, 0.0909091,  0.181818,  0.272727},
+                           {1,  0.992193,  0.968893,  0.930465}};
+  exp_mixed = A*exp_mixed; 
+
+  EXPECT_FALSE(exp_mixed.isApprox(*mixed,MAX_PRECISION)); //second arg (p) percision tolerance ∥v−w∥ ⩽ p min(∥v∥,∥w∥)
+}

@@ -26,10 +26,11 @@ class Mixer{
         size_t getNumSamples() const {return num_samples;}
         void setNumSignals(int new_num_sigs);
         void setNumSamples(int new_num_samps);
+        void setNumSignalsAndSamples(int new_num_sigs, int new_num_samps);
 
-        void genSignals();
+        void genSignals(int seed=6, int max_amp=2, int max_period=100);
         void setMixingMatrix(Eigen::MatrixXd A);
-        void mixSignals(bool noisy);
+        void mixSignals(bool noisy,int seed=123);
 };
 
 #endif
