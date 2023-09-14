@@ -65,6 +65,22 @@ void Mixer::genSignals(int seed, int max_amp, int max_period)
 
 }
 
+void Mixer::genSignals(std::string& gen_file )
+{
+    std::ifstream MyReadFile(gen_file);
+    SigGen::WaveGen waves((int)num_samples);
+    std::string line ,opt;
+    int i{0};
+    double amp, tau;
+    while (std::getline (MyReadFile, line)) {
+
+        std::stringstream ss(line);
+        ss >> amp >> tau >> opt;
+        raw_sigs->row(i++) = waves.genWave(amp, tau, opt);
+    }
+
+}
+
 
 void Mixer::mixSignals(bool noisy,int seed)
 {

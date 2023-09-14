@@ -4,6 +4,9 @@
 #include <random>
 #include <memory>
 #include"wave_gen.h"
+#include <fstream>
+#include <sstream>
+#include <string>
 
 class Mixer{
     private:
@@ -29,6 +32,7 @@ class Mixer{
         void setNumSignalsAndSamples(int new_num_sigs, int new_num_samps);
 
         void genSignals(int seed=6, int max_amp=2, int max_period=100);
+        void genSignals(std::string& gen_file);
         void setMixingMatrix(Eigen::MatrixXd A);
         void mixSignals(bool noisy,int seed=123);
 };
