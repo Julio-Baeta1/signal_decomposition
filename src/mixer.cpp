@@ -52,6 +52,21 @@ void Mixer::setNumSamples(int new_num_samps)
     mixed_sigs = std::make_shared<Eigen::MatrixXd>(Eigen::MatrixXd::Zero(mixing_mat->rows(), num_samples));
 }
 
+void Mixer::setNumSignalsAndSamples(int new_num_sigs, int new_num_samps)
+{
+    if(new_num_sigs < 1)
+        throw std::invalid_argument("Invalid number of signals, must be greater than 0");
+    if(new_num_samps < 1)
+        throw std::invalid_argument("Invalid sample size, must be greater than 0");
+
+    num_sigs = new_num_sigs;
+    num_samples = new_num_samps;
+        
+    raw_sigs = std::make_shared<Eigen::MatrixXd>(Eigen::MatrixXd::Zero(num_sigs, num_samples));
+    mixing_mat = std::make_unique<Eigen::MatrixXd>(Eigen::MatrixXd::Zero(mixing_mat->rows(), num_sigs));
+    mixed_sigs = std::make_shared<Eigen::MatrixXd>(Eigen::MatrixXd::Zero(mixing_mat->rows(), num_samples));
+}
+
 void Mixer::genSignals(int seed, int max_amp, int max_period)
 {
     //srand( (int)(time(0)) );
@@ -67,17 +82,40 @@ void Mixer::genSignals(int seed, int max_amp, int max_period)
 
 void Mixer::genSignals(std::string& gen_file )
 {
-    std::ifstream MyReadFile(gen_file);
-    SigGen::WaveGen waves((int)num_samples);
-    std::string line ,opt;
-    int i{0};
+    std::ifstream instr_file (gen_file);
+    if(!instr_file)
+        throw std::invalid_argument("File with name \"" +gen_file+ "\" not found");
+
+    std::string line,opt;
+    int m,n,i{0};
     double amp, tau;
-    while (std::getline (MyReadFile, line)) {
+
+    std::getline (instr_file, line);
+    std::stringstream ss(line);
+    ss>>m>>n;
+    
+    if(ss.fail())
+        throw std::invalid_argument("Invalid instruction in text file, line: " + std::to_string(i+2));
+
+    setNumSignalsAndSamples(m,n);
+    SigGen::WaveGen waves((int)num_samples);
+
+    while (std::getline (instr_file, line)) {
 
         std::stringstream ss(line);
         ss >> amp >> tau >> opt;
+
+        if(ss.fail())
+            throw std::invalid_argument("Invalid instruction in text file, line: " + std::to_string(i+2));
+
         raw_sigs->row(i++) = waves.genWave(amp, tau, opt);
+
+        if(i > num_sigs)
+            throw std::invalid_argument("Mismatch between number of signals (" +std::to_string(num_sigs)+ 
+                ") and amount of signal instructions in file (" +std::to_string(i)+")");
     }
+
+    instr_file.close();
 
 }
 
