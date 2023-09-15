@@ -8,32 +8,36 @@
 #include <sstream>
 #include <string>
 
+using Mat = Eigen::MatrixXd;
+
 class Mixer{
     private:
-        size_t num_sigs, num_samples;
-        std::unique_ptr<Eigen::MatrixXd> mixing_mat;
-        std::shared_ptr<Eigen::MatrixXd> raw_sigs,mixed_sigs; 
+        size_t n_sig, n_samp; //Number of signals and samples respectively
+        std::unique_ptr<Mat> mixing_mat;
+        std::shared_ptr<Mat> raw_sigs,mixed_sigs; 
         
 
     public:
         Mixer(int num_signals=2, int signal_duration=8);
-        Mixer(int num_signals, int signal_duration, Eigen::MatrixXd A);
+        Mixer(int num_signals, int signal_duration, Mat A);
 
-        Eigen::MatrixXd getRawSignalsValues() const {return *raw_sigs;}
-        Eigen::MatrixXd getMixedSignalsValues() const {return *mixed_sigs;}
-        Eigen::MatrixXd getMixingMatrixValues() const {return *mixing_mat;}
-        std::shared_ptr<Eigen::MatrixXd> getMixedSignalsSharedPtr() {return mixed_sigs;} 
-        std::shared_ptr<Eigen::MatrixXd> getRawSignalsSharedPtr() {return raw_sigs;} 
+        size_t getNumSignals() const {return n_sig;}
+        size_t getNumSamples() const {return n_samp;}
+        Mat getRawSignalsValues() const {return *raw_sigs;}
+        Mat getMixedSignalsValues() const {return *mixed_sigs;}
+        Mat getMixingMatrixValues() const {return *mixing_mat;}
 
-        size_t getNumSignals() const {return num_sigs;}
-        size_t getNumSamples() const {return num_samples;}
-        void setNumSignals(int new_num_sigs);
-        void setNumSamples(int new_num_samps);
-        void setNumSignalsAndSamples(int new_num_sigs, int new_num_samps);
+        std::shared_ptr<Mat> getMixedSignalsSharedPtr() {return mixed_sigs;} 
+        std::shared_ptr<Mat> getRawSignalsSharedPtr() {return raw_sigs;} 
 
-        void genSignals(int seed=6, int max_amp=2, int max_period=100);
+        void setNumSignalsAndSamples(int new_sigs, int new_samps);
+        void setNumSignals(int new_sigs);
+        void setNumSamples(int new_samps);
+        void setMixingMatrix(Mat A);
+
         void genSignals(std::string& gen_file);
-        void setMixingMatrix(Eigen::MatrixXd A);
+        void genSignals(int seed=6, int max_amp=2, int max_period=100);
+
         void mixSignals(bool noisy,int seed=123);
 };
 

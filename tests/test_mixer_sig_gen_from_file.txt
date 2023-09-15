@@ -1,0 +1,5 @@
+4 4
+1 50 sin
+1 6 square
+2 10 cos
+.5 22 sawtooth 
