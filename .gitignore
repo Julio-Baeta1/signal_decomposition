@@ -3,6 +3,7 @@
 /src/output.csv
 /src/testing_main.cpp
 /src/old_mixer.cpp
+/src/testing_ica.cpp
 /tests/build/
 myInstructs.txt
 opts.txt
