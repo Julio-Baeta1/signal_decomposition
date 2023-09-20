@@ -31,7 +31,7 @@ Eigen::VectorXd WaveGen::dcWave(double amp)
 {
         double freq = 1/period;
         Eigen::VectorXd wave = (2.0 * EIGEN_PI* freq *this->domain_sig);
-        wave = wave.array().sin();
+        wave = amp*wave.array().sin();
         return wave;
 } 
 
@@ -39,7 +39,7 @@ Eigen::VectorXd WaveGen::dcWave(double amp)
 {
         double freq = 1/period;
         Eigen::VectorXd wave = (2.0 * EIGEN_PI* freq * this->domain_sig);
-        wave = wave.array().cos();
+        wave = amp*wave.array().cos();
         return wave;
 } 
 
