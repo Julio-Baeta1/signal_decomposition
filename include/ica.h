@@ -2,6 +2,7 @@
 #define ICA_H
 
 #include <memory>
+#include <random>
 #include <iostream>
 #include<Eigen/Dense>
 #include <Eigen/Eigenvalues>
@@ -20,7 +21,7 @@ class Ica{
         std::shared_ptr<Mat> getResultPtr() {return S;}
 
         void sphering();
-        void decompose();
+        void decompose(int n_sigs);
 };
 
 #endif

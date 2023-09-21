@@ -130,7 +130,8 @@ void Mixer::mixSignals(bool noisy,int seed)
     if(noisy)
     {
         std::mt19937 r_gen (seed);
-        std::normal_distribution<double> r_dis(0.0, 1.0);
+        //std::normal_distribution<double> r_dis(0.0, 1.0);
+        std::normal_distribution<double> r_dis(0.0, 0.1);
         auto norm = [&] () {return r_dis(r_gen);};
 
         Mat v = Mat::NullaryExpr(n_sig,n_samp, norm );
