@@ -135,10 +135,18 @@ void Mixer::mixSignals(bool noisy,int seed)
         auto norm = [&] () {return r_dis(r_gen);};
 
         Mat v = Mat::NullaryExpr(n_sig,n_samp, norm );
-        v += *raw_sigs;
+        //v += *raw_sigs;
 
-        *mixed_sigs = *mixing_mat *v;
+        //v.rowwise().normalize();
+        *raw_sigs += v;
+        raw_sigs->rowwise().normalize();
+        //*mixed_sigs = *mixing_mat *v;
     }
     else
-        *mixed_sigs = *mixing_mat * *raw_sigs;
+    {
+        raw_sigs->rowwise().normalize();
+        //*mixed_sigs = *mixing_mat * *raw_sigs;
+    }
+
+    *mixed_sigs = *mixing_mat * *raw_sigs;
 }

@@ -4,6 +4,7 @@
 #include <memory>
 #include <random>
 #include <iostream>
+#include <fstream>
 #include<Eigen/Dense>
 #include <Eigen/Eigenvalues>
 #include <Eigen/SVD>
