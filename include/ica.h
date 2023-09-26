@@ -13,13 +13,14 @@ using Mat = Eigen::MatrixXd;
 
 class Ica{
     private:
-        std::shared_ptr<Mat> S;
+        std::shared_ptr<Mat> X;
     public:
 
-        Ica(std::shared_ptr<Mat> initial_S = nullptr);
+        Ica(std::shared_ptr<Mat> initial_X = nullptr);
 
-        void setSource(std::shared_ptr<Mat> new_S);
-        std::shared_ptr<Mat> getResultPtr() {return S;}
+        void setSource(std::shared_ptr<Mat> new_X);
+        void setSourceFromFile(std::string filename);
+        std::shared_ptr<Mat> getResultPtr() {return X;}
 
         void sphering();
         void decompose(int n_sigs);
