@@ -16,14 +16,14 @@ class Ica{
         std::shared_ptr<Mat> X;
     public:
 
-        Ica(std::shared_ptr<Mat> initial_X = nullptr);
+        Ica(std::shared_ptr<Mat> ini_X = nullptr);
 
         void setSource(std::shared_ptr<Mat> new_X);
         void setSourceFromFile(std::string filename);
         std::shared_ptr<Mat> getResultPtr() {return X;}
 
         void sphering();
-        void decompose(int n_sigs);
+        void decompose(int n_sigs, bool rand_W, int seed);
 };
 
 #endif
