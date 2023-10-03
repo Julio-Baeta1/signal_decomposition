@@ -3,12 +3,11 @@
 Ica::Ica(std::shared_ptr<Mat> ini_X)
 {
     X = std::move(ini_X);
-    W = nullptr;//std::make_unique<Mat>(Mat::Identity(X->cols(),X->cols())) ;
+    W = nullptr;
 }
 
 void Ica::setSource(std::shared_ptr<Mat> new_X)
 {
-    std::cout << "Inside set Source" << std::endl;
     X = std::move(new_X);
 }
 
@@ -16,7 +15,6 @@ void Ica::setSource(std::shared_ptr<Mat> new_X)
 void Ica::setSourceFromFile(std::string filename)
 //Currently hardcoded to scikit-learn example
 {
-    std::cout << "Inside Source from file" << std::endl;
     Mat SS = Mat::Zero(2000,3);
     Mat A{{1, 1, 1}, {0.5, 2, 1.0}, {1.5, 1.0, 2.0}};
 
@@ -35,8 +33,6 @@ void Ica::setSourceFromFile(std::string filename)
     }
     std::shared_ptr<Mat> XX = std::make_shared<Mat>((SS*A.transpose()).transpose());
     setSource(XX);
-    //X = std::make_shared<Mat>((SS*A.transpose()).transpose());
-    //X = std::make_shared<Mat>(SS*A.transpose());
 }
 
 void Ica::randW(int rows, int cols, int seed)
@@ -90,31 +86,56 @@ void Ica::decompose(int n_sigs, bool rand_W, int seed)
 
     for(int i=0; i<max_iter; i++)
     {
-        //u = W * *X;
         u = *W * *X;
         U = u.array().tanh();
         new_W = norm_const* *X * U.transpose();
-        //new_W = W.transpose().inverse() - new_W; 
-        //W = W + step*new_W;
         new_W = W->transpose().inverse() - new_W; 
         *W = *W + step*new_W;
     }
     *X = *W * *X;     
 }
 
-/*void Ica::fastIca(int n_sigs)
+void Ica::fastIca(int n_sigs)
+//Serial implementation, must make more parallel
 {
     sphering();
-    Mat XX = X->transpose();
 
-    int M = XX.rows(), N= XX.cols();
-    int max_iter = 1000;
+    int N = X->rows();
+    int M = X->cols();
+    double M_inv = 1./M; 
+    int max_iter = 10000;
 
-    Mat W
+    randW(N, n_sigs, 3);
+    Mat col_m = Mat::Ones(M,1); //col vec
 
-    for(int i=0; i<max_iter; i++)
+    auto g = [=] (double x) {return tanh(x);};
+    auto g_der = [=] (double x) {return 1.0 - std::pow(tanh(x),2.0);};
+
+    for(int n=0; n< n_sigs; n++)
     {
+        for(int i=0; i<max_iter; i++)
+        {
+            Mat w_p = W->col(n).transpose() * *X;
 
+            Mat f1 = M_inv * *X * w_p.unaryExpr(g).transpose();
+            Mat f2 = w_p.unaryExpr(g_der)*col_m;
+            double f2_d = f2(0,0);
+            Mat f3 = M_inv * f2_d * W->col(n) ;
+
+            w_p = f1 - f3;
+
+            Mat sum = Mat::Zero(N,1);
+            for (int k=0; k<n; k++)
+                {
+                    Mat temp = w_p.transpose() * W->col(k);
+                    double temp_d = temp(0,0);
+                    sum += temp_d * W->col(k);
+                } 
+
+            w_p = w_p - sum;
+            w_p.normalize();
+            W->col(n) = w_p;
+        }
     }
-
-}*/
+    *X = *W * *X;
+}
