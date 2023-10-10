@@ -28,7 +28,7 @@ class Ica{
 
         void sphering();
         void decompose(int n_sigs, bool rand_W, int seed);
-        void fastIca(int n_sigs);
+        void fastIca(int n_sigs, std::string func_type, int seed);
 };
 
 #endif

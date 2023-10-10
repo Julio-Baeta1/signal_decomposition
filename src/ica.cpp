@@ -42,6 +42,9 @@ void Ica::randW(int rows, int cols, int seed)
     auto norm = [&] () {return r_dis(r_gen);};
 
     W = std::make_unique<Mat>(Mat::NullaryExpr(rows,cols, norm )) ;
+    //W->normalize(); //Frobenius Norm
+    W->rowwise().normalize();
+    
 }
 
 void Ica::setW(int rows, int cols, int seed, bool is_rand)
@@ -95,47 +98,73 @@ void Ica::decompose(int n_sigs, bool rand_W, int seed)
     *X = *W * *X;     
 }
 
-void Ica::fastIca(int n_sigs)
+void Ica::fastIca(int n_sigs, std::string func_type, int seed)
 //Serial implementation, must make more parallel
+//best seed currently 14 but returns signals scaled by -1
 {
-    sphering();
 
-    int N = X->rows();
-    int M = X->cols();
-    double M_inv = 1./M; 
-    int max_iter = 10000;
+    //Lambda functions must fix scope problem
+    /*if(func_type=="cosh"){
+        auto g = [=] (double x) {return tanh(x);};
+        auto g_der = [=] (double x) {return 1.0 - std::pow(tanh(x),2.0);};
+    }else if (func_type=="exp")
+    {
+        auto g = [=] (double x) {return x*exp(x*x/-2.0);};
+        auto g_der = [=] (double x) {return (1.0-x*x)*exp(x*x/-2.0);};
+    }else if (func_type=="cubic")
+    {
+        auto g = [=] (double x) {return .25*pow(x,4);};
+        auto g_der = [=] (double x) {return pow(x,3);};
+    }else{
+        throw std::invalid_argument(func_type + " is not a valid function type option");
+    }*/
 
-    randW(N, n_sigs, 3);
-    Mat col_m = Mat::Ones(M,1); //col vec
-
+    //Lambda functions
     auto g = [=] (double x) {return tanh(x);};
     auto g_der = [=] (double x) {return 1.0 - std::pow(tanh(x),2.0);};
 
+    //whiten data
+    sphering();
+
+    int N = X->rows();
+    int M = X->cols(); 
+    int max_iter = 1000;
+
+    //Gen Random W
+    randW(N, n_sigs, seed);
+
+    //used to get Expected Value
+    double M_inv = 1./M;
+    Mat col_m = Mat::Ones(M,1); 
+
     for(int n=0; n< n_sigs; n++)
     {
+        Mat w_p = W->row(n);
+
         for(int i=0; i<max_iter; i++)
         {
-            Mat w_p = W->col(n).transpose() * *X;
+            w_p = w_p * *X; //projection
 
-            Mat f1 = M_inv * *X * w_p.unaryExpr(g).transpose();
-            Mat f2 = w_p.unaryExpr(g_der)*col_m;
-            double f2_d = f2(0,0);
-            Mat f3 = M_inv * f2_d * W->col(n) ;
+            Mat f1 = M_inv * *X * w_p.unaryExpr(g).transpose(); //E{X*g(w*X)^T}
+            Mat f2 = w_p.unaryExpr(g_der)*col_m; //1x1 matrix to scale w
+            Mat f3 = M_inv * f2(0,0) * W->row(n) ; //E{g'(w*X)}*w}
 
-            w_p = f1 - f3;
+            w_p = f1.transpose() - f3;  
 
-            Mat sum = Mat::Zero(N,1);
+            //Gram Schimdt
+            Mat sum = Mat::Zero(1,N);
             for (int k=0; k<n; k++)
                 {
-                    Mat temp = w_p.transpose() * W->col(k);
-                    double temp_d = temp(0,0);
-                    sum += temp_d * W->col(k);
+                    Mat temp = w_p * W->row(k).transpose();
+                    sum += temp(0,0) * W->row(k);
                 } 
 
             w_p = w_p - sum;
             w_p.normalize();
-            W->col(n) = w_p;
         }
+        W->row(n) = w_p;
     }
+
+    std::cout << *W << std::endl;
     *X = *W * *X;
 }
