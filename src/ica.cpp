@@ -42,8 +42,8 @@ void Ica::randW(int rows, int cols, int seed)
     auto norm = [&] () {return r_dis(r_gen);};
 
     W = std::make_unique<Mat>(Mat::NullaryExpr(rows,cols, norm )) ;
-    //W->normalize(); //Frobenius Norm
-    W->rowwise().normalize();
+    
+    W->rowwise().normalize(); //W->normalize() uses the Frobenius Norm
     
 }
 
@@ -71,7 +71,7 @@ void Ica::sphering()
 
     //Whitening
     Mat D_to_neg_half = D.cwiseInverse().cwiseSqrt().asDiagonal();
-    *X = V*D_to_neg_half*V.transpose() * *X;
+    *X = D_to_neg_half*V.transpose() * *X;
 }
 
 void Ica::decompose(int n_sigs, bool rand_W, int seed)
@@ -100,8 +100,12 @@ void Ica::decompose(int n_sigs, bool rand_W, int seed)
 
 void Ica::fastIca(int n_sigs, std::string func_type, int seed)
 //Serial implementation, must make more parallel
-//best seed currently 14 but returns signals scaled by -1
+//best seed currently 1 
 {
+    int N = X->rows();
+    int M = X->cols(); 
+    int max_iter = 200;
+    double tol = 1e-4;
 
     //Lambda functions must fix scope problem
     /*if(func_type=="cosh"){
@@ -126,10 +130,6 @@ void Ica::fastIca(int n_sigs, std::string func_type, int seed)
     //whiten data
     sphering();
 
-    int N = X->rows();
-    int M = X->cols(); 
-    int max_iter = 1000;
-
     //Gen Random W
     randW(N, n_sigs, seed);
 
@@ -139,32 +139,29 @@ void Ica::fastIca(int n_sigs, std::string func_type, int seed)
 
     for(int n=0; n< n_sigs; n++)
     {
-        Mat w_p = W->row(n);
+        Mat w_p = W->col(n);
 
         for(int i=0; i<max_iter; i++)
         {
-            w_p = w_p * *X; //projection
-
-            Mat f1 = M_inv * *X * w_p.unaryExpr(g).transpose(); //E{X*g(w*X)^T}
-            Mat f2 = w_p.unaryExpr(g_der)*col_m; //1x1 matrix to scale w
-            Mat f3 = M_inv * f2(0,0) * W->row(n) ; //E{g'(w*X)}*w}
-
-            w_p = f1.transpose() - f3;  
+            Mat w_proj = w_p.transpose() * *X; //w^T*X
+            Mat e1 = M_inv * *X * w_proj.unaryExpr(g).transpose(); //E{X*g(w^T*X)^T}
+            Mat e2 = M_inv*(w_proj.unaryExpr(g_der)*col_m)(0,0) * w_p ; //E{g'(w^T*X)}*w} 
+            w_p = e1 - e2; 
 
             //Gram Schimdt
-            Mat sum = Mat::Zero(1,N);
+            Mat sum = Mat::Zero(N,1);
             for (int k=0; k<n; k++)
                 {
-                    Mat temp = w_p * W->row(k).transpose();
-                    sum += temp(0,0) * W->row(k);
+                    Mat temp = w_p.transpose() * W->col(k);
+                    sum += temp(0,0) * W->col(k);
                 } 
 
             w_p = w_p - sum;
             w_p.normalize();
         }
-        W->row(n) = w_p;
+        W->col(n) = w_p;
     }
 
-    std::cout << *W << std::endl;
-    *X = *W * *X;
+    //std::cout << W->transpose() << std::endl;
+    *X = W->transpose() * *X;
 }
