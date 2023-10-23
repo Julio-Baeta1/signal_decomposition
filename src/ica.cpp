@@ -98,14 +98,13 @@ void Ica::decompose(int n_sigs, bool rand_W, int seed)
     *X = *W * *X;     
 }
 
-void Ica::fastIca(int n_sigs, std::string func_type, int seed)
+void Ica::fastIca(int n_sigs, std::string func_type, int seed, double tol)
 //Serial implementation, must make more parallel
 //best seed currently 1 
 {
     int N = X->rows();
     int M = X->cols(); 
     int max_iter = 200;
-    double tol = 1e-4;
 
     //Lambda functions must fix scope problem
     /*if(func_type=="cosh"){
@@ -144,24 +143,31 @@ void Ica::fastIca(int n_sigs, std::string func_type, int seed)
         for(int i=0; i<max_iter; i++)
         {
             Mat w_proj = w_p.transpose() * *X; //w^T*X
-            Mat e1 = M_inv * *X * w_proj.unaryExpr(g).transpose(); //E{X*g(w^T*X)^T}
-            Mat e2 = M_inv*(w_proj.unaryExpr(g_der)*col_m)(0,0) * w_p ; //E{g'(w^T*X)}*w} 
-            w_p = e1 - e2; 
+            Mat E1 = M_inv * *X * w_proj.unaryExpr(g).transpose(); //E{X*g(w^T*X)^T}
+            Mat E2 = M_inv*(w_proj.unaryExpr(g_der)*col_m)(0,0) * w_p ; //E{g'(w^T*X)}*w} 
+            w_proj = E1 - E2; 
 
             //Gram Schimdt
             Mat sum = Mat::Zero(N,1);
             for (int k=0; k<n; k++)
                 {
-                    Mat temp = w_p.transpose() * W->col(k);
+                    Mat temp = w_proj.transpose() * W->col(k);
                     sum += temp(0,0) * W->col(k);
                 } 
 
-            w_p = w_p - sum;
-            w_p.normalize();
+            w_proj = w_proj - sum;
+            w_proj.normalize();
+
+            //err = the absolute difference between 1 and the correlation between w_p(t) and w_p(t-1) 
+            double err = abs(abs((w_proj.transpose() * w_p)(0,0)) -1); 
+            w_p = w_proj;
+            if(err < tol)
+                break;
+            
         }
         W->col(n) = w_p;
     }
 
-    //std::cout << W->transpose() << std::endl;
+    std::cout << W->transpose() << std::endl;
     *X = W->transpose() * *X;
 }

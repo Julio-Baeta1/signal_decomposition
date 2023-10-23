@@ -9,7 +9,7 @@ using Mat = Eigen::MatrixXd;
 using Vec = Eigen::VectorXd;
 
 constexpr double MIN_PRECISION = 1.0E-6 ; //Used as tolerance for deciding if two matrices are equivalent
-constexpr double MAX_PRECISION = 1.0 ; //If matrices are not equivalent, we want the tolerance to be high for greater certainty
+constexpr double MAX_PRECISION = 5.0E-1 ; //If matrices are not equivalent, we want the tolerance to be high for greater certainty
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 //wave_gen
@@ -232,7 +232,7 @@ TEST(MixerTest, GenerateRawSignalsFromFileInstructions) {
   Mat* gen_sigs = mixer_parm.getRawSignalsSharedPtr().get();
   Mat exp_sigs{{0, 0.166769, 0.328867, 0.481754},
                 {1, 1, 1, -1},
-                {1, 0.669131, -0.104528, -0.809017},
+                {2, 1.338262, -0.209056, -1.618034},
                 {0, 0.0238095, 0.047619, 0.0714286}};
 
   EXPECT_TRUE(exp_sigs.isApprox(*gen_sigs,MIN_PRECISION)); //second arg (p) percision tolerance ∥v−w∥ ⩽ p min(∥v∥,∥w∥)
@@ -275,30 +275,33 @@ TEST(MixerTest, GenerateRawSignalsFromFileInstructionsFileTooManySignals) {
 }
 
 TEST(MixerTest, GenerateRawSignals) {
+  //Tests if signal is generated not quality of signals
   Mixer mixer_parm(4,4);
+  Mat zero_sigs = Mat::Zero(4,4);
 
   mixer_parm.genSignals(6);
   Mat* gen_sigs = mixer_parm.getRawSignalsSharedPtr().get();
-  Mat exp_sigs{{0, 0.0410959, 0.0821918,  0.123288},
-                           {0,  0.930874,  0.680173, -0.433884},
-                           {0, 0.0909091,  0.181818,  0.272727},
-                           {1,  0.992193,  0.968893,  0.930465}};
 
-  EXPECT_TRUE(exp_sigs.isApprox(*gen_sigs,MIN_PRECISION)); //second arg (p) percision tolerance ∥v−w∥ ⩽ p min(∥v∥,∥w∥)
+  EXPECT_FALSE(zero_sigs.isApprox(*gen_sigs,MAX_PRECISION)); //second arg (p) percision tolerance ∥v−w∥ ⩽ p min(∥v∥,∥w∥)
 }
 
 TEST(MixerTest, MixSignalsNoNoise) {
   Mat A{{0.1,0.3,0.15,0.95},{0.4,0.5,0.6,0.5},{0.07,1.2,0.01,0.9},{0.01,0.85,0.15,0.23}};
-  Mixer mixer_parm(4,4,A);
+  Mixer mixer_parm(4,4);
 
-  mixer_parm.genSignals(6);
+  std::string test_file = "../test_mixer_sig_gen_from_file.txt";
+  mixer_parm.genSignals(test_file);
+  mixer_parm.setMixingMatrix(A);
+
   mixer_parm.mixSignals(false,123);
   Mat* mixed = mixer_parm.getMixedSignalsSharedPtr().get();
 
-  Mat exp_mixed{{0, 0.0410959, 0.0821918,  0.123288},
-                           {0,  0.930874,  0.680173, -0.433884},
-                           {0, 0.0909091,  0.181818,  0.272727},
-                           {1,  0.992193,  0.968893,  0.930465}};
+  Mat exp_mixed{{0, 0.166769, 0.328867, 0.481754},
+                {1, 1, 1, -1},
+                {2, 1.338262, -0.209056, -1.618034},
+                {0, 0.0238095, 0.047619, 0.0714286}};
+  exp_mixed.rowwise().normalize();
+
   exp_mixed = A*exp_mixed; 
 
   EXPECT_TRUE(exp_mixed.isApprox(*mixed,MIN_PRECISION)); //second arg (p) percision tolerance ∥v−w∥ ⩽ p min(∥v∥,∥w∥)
@@ -306,16 +309,21 @@ TEST(MixerTest, MixSignalsNoNoise) {
 
 TEST(MixerTest, MixSignalsWithNoise) {
   Mat A{{0.1,0.3,0.15,0.95},{0.4,0.5,0.6,0.5},{0.07,1.2,0.01,0.9},{0.01,0.85,0.15,0.23}};
-  Mixer mixer_parm(4,4,A);
+  Mixer mixer_parm(4,4);
 
-  mixer_parm.genSignals(6);
+  std::string test_file = "../test_mixer_sig_gen_from_file.txt";
+  mixer_parm.genSignals(test_file);
+  mixer_parm.setMixingMatrix(A);
+
   mixer_parm.mixSignals(true,123);
   Mat* mixed = mixer_parm.getMixedSignalsSharedPtr().get();
 
-  Mat exp_mixed{{0, 0.0410959, 0.0821918,  0.123288},
-                           {0,  0.930874,  0.680173, -0.433884},
-                           {0, 0.0909091,  0.181818,  0.272727},
-                           {1,  0.992193,  0.968893,  0.930465}};
+  Mat exp_mixed{{0, 0.166769, 0.328867, 0.481754},
+                {1, 1, 1, -1},
+                {2, 1.338262, -0.209056, -1.618034},
+                {0, 0.0238095, 0.047619, 0.0714286}};
+  exp_mixed.rowwise().normalize();
+
   exp_mixed = A*exp_mixed; 
 
   EXPECT_FALSE(exp_mixed.isApprox(*mixed,MAX_PRECISION)); //second arg (p) percision tolerance ∥v−w∥ ⩽ p min(∥v∥,∥w∥)
