@@ -8,6 +8,8 @@
 #include<Eigen/Dense>
 #include <Eigen/Eigenvalues>
 #include <Eigen/SVD>
+#include <functional>
+#include <utility>
 
 using Mat = Eigen::MatrixXd;
 
@@ -15,6 +17,10 @@ class Ica{
     private:
         std::shared_ptr<Mat> X;
         std::unique_ptr<Mat> W;
+
+        void gs_grad_des(Mat *w, int col_num);
+        void serial_fastICA(int n_sigs, int max_iter, double tol);
+
     public:
 
         Ica(std::shared_ptr<Mat> ini_X = nullptr);
@@ -27,8 +33,8 @@ class Ica{
         void setW(int rows, int cols, int seed, bool is_rand);
 
         void sphering();
-        void decompose(int n_sigs, bool rand_W, int seed);
-        void fastIca(int n_sigs, std::string func_type, int seed, double tol);
+        void decompose(int n_sigs=2, bool rand_W=false, int seed=1);
+        void fastIca(int n_sigs=2, std::string func_type="cosh", int seed=1, double tol=5e-6, int max_iter=200);
 };
 
 #endif

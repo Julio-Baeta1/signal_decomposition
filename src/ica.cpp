@@ -74,6 +74,7 @@ void Ica::sphering()
     *X = D_to_neg_half*V.transpose() * *X;
 }
 
+
 void Ica::decompose(int n_sigs, bool rand_W, int seed)
 /* Gradient Descent of Entropy
 */
@@ -98,13 +99,83 @@ void Ica::decompose(int n_sigs, bool rand_W, int seed)
     *X = *W * *X;     
 }
 
-void Ica::fastIca(int n_sigs, std::string func_type, int seed, double tol)
-//Serial implementation, must make more parallel
-//best seed currently 1 
+void Ica::gs_grad_des(Mat* w, int col_num)
 {
-    int N = X->rows();
+    //Gram Schimdt
+    Mat temp;
+    Mat sum = Mat::Zero(X->rows(),1);
+    for (int k=0; k<col_num; k++)
+    {
+        temp = w->transpose() * W->col(k);
+        sum += temp(0,0) * W->col(k);
+    } 
+
+    *w = *w - sum;
+    w->normalize();
+
+}
+
+void Ica::serial_fastICA(int n_sigs, int max_iter, double tol)
+{
     int M = X->cols(); 
-    int max_iter = 200;
+    double M_inv = 1./M;
+    Mat col_m = Mat::Ones(M,1); 
+
+    auto g = [=] (double x) {return tanh(x);};
+    auto g_der = [=] (double x) {return 1.0 - std::pow(tanh(x),2.0);};
+
+    for(int n=0; n< n_sigs; n++)
+    {
+    
+        Mat w_p = W->col(n);
+
+        for(int i=0; i<max_iter; i++)
+        {
+            Mat w_proj = w_p.transpose() * *X; //w^T*X
+            Mat E1 = M_inv * *X * w_proj.unaryExpr(g).transpose(); //E{X*g(w^T*X)^T}
+            Mat E2 = M_inv*(w_proj.unaryExpr(g_der)*col_m)(0,0) * w_p ; //E{g'(w^T*X)}*w} 
+            w_proj = E1 - E2; 
+
+            gs_grad_des(&w_proj, n);
+
+            //err = the absolute difference between 1 and the correlation between w_p(t) and w_p(t-1) 
+            double err = abs(abs((w_proj.transpose() * w_p)(0,0)) -1); 
+            w_p = w_proj;
+            if(err < tol)
+                break;
+            
+        }
+        W->col(n) = w_p;
+    }
+
+    std::cout << W->transpose() << std::endl;
+    *X = W->transpose() * *X;
+}
+
+double coshG(double x)
+{
+    return tanh(x);
+}
+
+double coshGDEr(double x)
+{
+    return 1.0 - std::pow(tanh(x),2.0);
+}
+
+void Ica::fastIca(int n_sigs, std::string func_type, int seed, double tol, int max_iter)
+{
+    //whiten data
+    sphering();
+
+    //Gen Random W
+    randW(X->rows(), n_sigs, seed);
+
+    //std::function<double(double)> g = coshG;
+    //std::function<double(double)> g_der = coshGDEr;
+
+    //serial_fastICA(g, g_der, n_sigs, max_iter, tol);
+    serial_fastICA(n_sigs, max_iter, tol);
+}
 
     //Lambda functions must fix scope problem
     /*if(func_type=="cosh"){
@@ -122,52 +193,3 @@ void Ica::fastIca(int n_sigs, std::string func_type, int seed, double tol)
         throw std::invalid_argument(func_type + " is not a valid function type option");
     }*/
 
-    //Lambda functions
-    auto g = [=] (double x) {return tanh(x);};
-    auto g_der = [=] (double x) {return 1.0 - std::pow(tanh(x),2.0);};
-
-    //whiten data
-    sphering();
-
-    //Gen Random W
-    randW(N, n_sigs, seed);
-
-    //used to get Expected Value
-    double M_inv = 1./M;
-    Mat col_m = Mat::Ones(M,1); 
-
-    for(int n=0; n< n_sigs; n++)
-    {
-        Mat w_p = W->col(n);
-
-        for(int i=0; i<max_iter; i++)
-        {
-            Mat w_proj = w_p.transpose() * *X; //w^T*X
-            Mat E1 = M_inv * *X * w_proj.unaryExpr(g).transpose(); //E{X*g(w^T*X)^T}
-            Mat E2 = M_inv*(w_proj.unaryExpr(g_der)*col_m)(0,0) * w_p ; //E{g'(w^T*X)}*w} 
-            w_proj = E1 - E2; 
-
-            //Gram Schimdt
-            Mat sum = Mat::Zero(N,1);
-            for (int k=0; k<n; k++)
-                {
-                    Mat temp = w_proj.transpose() * W->col(k);
-                    sum += temp(0,0) * W->col(k);
-                } 
-
-            w_proj = w_proj - sum;
-            w_proj.normalize();
-
-            //err = the absolute difference between 1 and the correlation between w_p(t) and w_p(t-1) 
-            double err = abs(abs((w_proj.transpose() * w_p)(0,0)) -1); 
-            w_p = w_proj;
-            if(err < tol)
-                break;
-            
-        }
-        W->col(n) = w_p;
-    }
-
-    std::cout << W->transpose() << std::endl;
-    *X = W->transpose() * *X;
-}
