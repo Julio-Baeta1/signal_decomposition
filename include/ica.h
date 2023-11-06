@@ -18,7 +18,7 @@ class Ica{
         std::shared_ptr<Mat> X;
         std::unique_ptr<Mat> W;
 
-        void gsGradDes(Mat *w, int col_num);
+        void gsDecorr(Mat *w, int col_num);
         void serialFastICACosh(int n_sigs, double tol, int max_iter);
         void serialFastICAExp(int n_sigs, double tol, int max_iter);
         void serialFastICACubic(int n_sigs, double tol, int max_iter);

@@ -14,8 +14,7 @@ class Mixer{
     private:
         size_t n_sig, n_samp; //Number of signals and samples respectively
         std::unique_ptr<Mat> mixing_mat;
-        std::shared_ptr<Mat> raw_sigs,mixed_sigs; 
-        
+        std::shared_ptr<Mat> raw_sigs,mixed_sigs;
 
     public:
         Mixer(int num_signals=2, int signal_duration=8);
@@ -33,12 +32,15 @@ class Mixer{
         void setNumSignalsAndSamples(int new_sigs, int new_samps);
         void setNumSignals(int new_sigs);
         void setNumSamples(int new_samps);
+
         void setMixingMatrix(Mat A);
+        void setMixingFromFile(std::string& file_name);
+        void setSourceFromFile(std::string& file_name);
 
         void genSignals(std::string& gen_file);
         void genSignals(int seed=6, int max_amp=2, int max_period=100);
 
-        void mixSignals(bool noisy,int seed=123);
+        void mixSignals(bool noisy=false,int seed=123);
 };
 
 #endif

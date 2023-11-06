@@ -61,6 +61,165 @@ void Mixer::setMixingMatrix(Mat A)
 }
 
 
+void Mixer::setSourceFromFile(std::string& file_name)
+/*Read in raw sources as a matrix from file_name
+Format:
+number_of_rows number_of_columns T(optional if you want matrix transposed)
+x x x ....
+.
+.
+.
+where x are doubles
+      number_of_rows number_of_columns are ints
+*/
+{
+    std::ifstream mat_stream (file_name);
+    if (!mat_stream)
+        throw std::invalid_argument("File with name \"" +file_name+ "\" not found");
+
+    std::string line, elem, transposed{"None"};
+    bool is_transposed{false};
+    int rows{0},cols{0};
+
+    std::getline (mat_stream, line);
+    std::stringstream ss(line);
+
+    ss >> rows >> cols;
+    if(ss.fail())
+        throw std::invalid_argument("Invalid matrix row params: /n"+line);
+    if(rows < 1)
+        throw std::invalid_argument("Invalid number of rows, must be greater than 0");
+    if(cols < 1)
+        throw std::invalid_argument("Invalid number of columns, must be greater than 0");
+
+    if(ss>>transposed){
+        if(transposed == "T")
+            is_transposed = true;
+        else
+          throw std::invalid_argument("Invalid option. Use T to indicate the matrix must be transposed");  
+    }
+
+    Mat SS = Mat::Zero(rows,cols);
+
+    int i{0};
+    while (std::getline (mat_stream, line)) {
+
+        std::stringstream ss(line);
+        int j{0};
+        if(i == rows)
+                throw std::invalid_argument("Too many rows:");
+
+        while (std::getline(ss, elem, ','))
+        {
+            if(j == cols)
+                throw std::invalid_argument("Too many elements on row:" +std::to_string(i));
+
+            if(ss.fail())
+                throw std::invalid_argument("Invalid matrix row, line: " + std::to_string(i+1)+"/n"+line);
+            
+            if(!elem.empty())
+                SS(i,j++) = stod(elem);
+            else
+                throw std::invalid_argument("Error on line: " +std::to_string(i+1)+"/n"+line);
+        }
+        if(j != cols)
+            throw std::invalid_argument("Too few elements on row:" +std::to_string(i));
+        i++;
+    }
+
+    if(i != rows)
+        throw std::invalid_argument("Too few rows:");
+
+    mat_stream.close();
+
+    if(!is_transposed){
+        setNumSignalsAndSamples(rows, cols);
+        raw_sigs = std::make_shared<Mat>(SS);
+    }
+    else{
+        setNumSignalsAndSamples(cols, rows);
+        raw_sigs = std::make_shared<Mat>(SS.transpose());
+    }
+}
+
+void Mixer::setMixingFromFile(std::string& file_name)
+/*Read in mixing matrix from file_name
+Format:
+number_of_rows number_of_columns T(optional if you want matrix transposed)
+x x x ....
+.
+.
+.
+where x are doubles
+      number_of_rows number_of_columns are ints
+*/
+{
+   std::ifstream mat_stream (file_name);
+    if (!mat_stream)
+        throw std::invalid_argument("File with name \"" +file_name+ "\" not found");
+
+    std::string line, elem, transposed{"None"};
+    bool is_transposed{false};
+    int rows{0},cols{0};
+
+    std::getline (mat_stream, line);
+    std::stringstream ss(line);
+
+    ss >> rows >> cols;
+    if(ss.fail())
+        throw std::invalid_argument("Invalid matrix row params: /n"+line);
+
+    if(rows < 1)
+        throw std::invalid_argument("Invalid number of rows, must be greater than 0");
+    if(cols < 1)
+        throw std::invalid_argument("Invalid number of columns, must be greater than 0");
+
+    if(ss>>transposed){
+        if(transposed == "T")
+            is_transposed = true;
+        else
+          throw std::invalid_argument("Invalid option. Use T to indicate the matrix must be transposed");  
+    }
+    
+    Mat AA = Mat::Zero(rows,cols);
+
+    int i{0};
+    while (std::getline (mat_stream, line)) {
+
+        std::stringstream ss(line);
+        int j{0};
+        if(i == rows)
+                throw std::invalid_argument("Too many rows:");
+
+        while (std::getline(ss, elem, ','))
+        {
+            if(j == cols)
+                throw std::invalid_argument("Too many elements on row:" +std::to_string(i));
+
+            if(ss.fail())
+                throw std::invalid_argument("Invalid matrix row, line: " + std::to_string(i+1)+"/n"+line);
+            
+            if(!elem.empty())
+                AA(i,j++) = stod(elem);
+            else
+                throw std::invalid_argument("Error on line: " +std::to_string(i+1)+"/n"+line);
+        }
+        if(j != cols)
+            throw std::invalid_argument("Too few elements on row:" +std::to_string(i));
+        i++;
+    }
+
+    if(i != rows)
+        throw std::invalid_argument("Too few rows:");
+    
+    mat_stream.close();
+
+    if(!is_transposed)
+        setMixingMatrix(AA);
+    else
+        setMixingMatrix(AA.transpose());
+
+}
 
 void Mixer::genSignals(std::string& gen_file )
 /* Textfile must be of form
@@ -114,7 +273,6 @@ where:
 
 void Mixer::genSignals(int seed, int max_amp, int max_period)
 {
-    //srand( (int)(time(0)) );
     srand(seed);
     SigGen::WaveGen waves((int)n_samp);
 
@@ -130,22 +288,17 @@ void Mixer::mixSignals(bool noisy,int seed)
     if(noisy)
     {
         std::mt19937 r_gen (seed);
-        //std::normal_distribution<double> r_dis(0.0, 1.0);
         std::normal_distribution<double> r_dis(0.0, 0.1);
         auto norm = [&] () {return r_dis(r_gen);};
 
         Mat v = Mat::NullaryExpr(n_sig,n_samp, norm );
-        //v += *raw_sigs;
 
-        //v.rowwise().normalize();
         *raw_sigs += v;
         raw_sigs->rowwise().normalize();
-        //*mixed_sigs = *mixing_mat *v;
     }
     else
     {
         raw_sigs->rowwise().normalize();
-        //*mixed_sigs = *mixing_mat * *raw_sigs;
     }
 
     *mixed_sigs = *mixing_mat * *raw_sigs;
