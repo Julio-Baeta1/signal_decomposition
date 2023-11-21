@@ -15,8 +15,11 @@ using Mat = Eigen::MatrixXd;
 
 class Ica{
     private:
-        std::shared_ptr<Mat> X;
-        std::unique_ptr<Mat> W;
+        /* XX: Provided mixed signals
+            X: ICA unmixed signals  
+            W: Unmixing matrix
+        */
+        std::unique_ptr<Mat> X,W,XX;
 
         void gsDecorr(Mat *w, int col_num);
         void serialFastICACosh(int n_sigs, double tol, int max_iter);
@@ -25,11 +28,20 @@ class Ica{
 
     public:
 
-        Ica(std::shared_ptr<Mat> ini_X = nullptr);
+        Ica(Mat ini_X = Mat::Zero(1,1));
+        Ica(Mat* ini_ptr);
 
-        void setSource(std::shared_ptr<Mat> new_X);
+        void setSource(Mat new_X);
+        void setSource(Mat* new_ptr);
         void setSourceFromFile(std::string filename);
-        std::shared_ptr<Mat> getResultPtr() {return X;}
+
+        Mat* getResultPtr() {return X.get();}
+        Mat* getMixedPtr() {return XX.get();}
+        Mat* getMixingPtr() {return W.get();}
+        Mat getResult() {return *X;}
+        Mat getMixed() {return *XX;}
+        Mat getMixingMat() {return *W;}
+
 
         void randW(int rows, int cols, int seed);
         void setW(int rows, int cols, int seed, bool is_rand);

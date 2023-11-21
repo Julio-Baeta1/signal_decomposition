@@ -1,14 +1,27 @@
 #include "ica.h"
 
-Ica::Ica(std::shared_ptr<Mat> ini_X)
+Ica::Ica(Mat ini_X)
 {
-    X = std::move(ini_X);
-    W = nullptr;
+    X = std::make_unique<Mat>();
+    W = std::make_unique<Mat>();
+    XX = std::make_unique<Mat>(ini_X);
 }
 
-void Ica::setSource(std::shared_ptr<Mat> new_X)
+Ica::Ica(Mat* ini_ptr)
 {
-    X = std::move(new_X);
+    X = std::make_unique<Mat>();
+    W = std::make_unique<Mat>();
+    XX = std::make_unique<Mat>(*ini_ptr);
+}
+
+void Ica::setSource(Mat new_X)
+{
+    XX = std::make_unique<Mat>(new_X);
+}
+
+void Ica::setSource(Mat* new_ptr)
+{
+    XX = std::make_unique<Mat>(*new_ptr);
 }
 
 
@@ -31,8 +44,10 @@ void Ica::setSourceFromFile(std::string filename)
         }
         i++;
     }
-    std::shared_ptr<Mat> XX = std::make_shared<Mat>((SS*A.transpose()).transpose());
-    setSource(XX);
+    //std::shared_ptr<Mat> XX = std::make_shared<Mat>((SS*A.transpose()).transpose());
+    Mat XX = SS*A.transpose();
+    setSource(XX.transpose());
+    //setSource(XX);
 }
 
 void Ica::randW(int rows, int cols, int seed)
@@ -44,7 +59,6 @@ void Ica::randW(int rows, int cols, int seed)
     W = std::make_unique<Mat>(Mat::NullaryExpr(rows,cols, norm )) ;
     
     W->rowwise().normalize(); //W->normalize() uses the Frobenius Norm
-    
 }
 
 void Ica::setW(int rows, int cols, int seed, bool is_rand)
@@ -80,6 +94,7 @@ void Ica::decompose(int n_sigs, bool rand_W, int seed)
 */
 {   
     setW(n_sigs,n_sigs,seed,rand_W);
+    *X = *XX;
 
     double norm_const = 2/(double)X->cols();
     Mat new_W = Mat::Zero(n_sigs,n_sigs);
@@ -126,11 +141,11 @@ void Ica::serialFastICACosh(int n_sigs, double tol, int max_iter)
 
     for(int n=0; n< n_sigs; n++)
     {
-    
         Mat w_p = W->col(n);
 
         for(int i=0; i<max_iter; i++)
         {
+            std::cout << "i: " <<n << std::endl << std::endl;
             Mat w_proj = w_p.transpose() * *X; //w^T*X
             Mat E1 = M_inv * *X * w_proj.unaryExpr(g).transpose(); //E{X*g(w^T*X)^T}
             Mat E2 = M_inv*(w_proj.unaryExpr(g_der)*col_m)(0,0) * w_p ; //E{g'(w^T*X)}*w} 
@@ -230,12 +245,15 @@ void Ica::serialFastICACubic(int n_sigs, double tol, int max_iter)
 
 void Ica::fastIca(int n_sigs, std::string func_type, int seed, double tol, int max_iter)
 {
+    X = std::make_unique<Mat>(*XX);
+
     //whiten data
     sphering();
 
     //Gen Random W
     randW(X->rows(), n_sigs, seed);
 
+    
 
     /*Call different sub functions with the appropriate lambda functions for the approximating function selected. A more elegant 
     solution would be to use function pointer std::function<double(double)> but comipler optimiser/linker issue caused some func ptr
@@ -243,11 +261,11 @@ void Ica::fastIca(int n_sigs, std::string func_type, int seed, double tol, int m
     working project prototype sooner rather than an elegant solution later.
     */
     if(func_type=="cosh")
-        serialFastICACosh(n_sigs, max_iter, tol);
+        serialFastICACosh(n_sigs, tol, max_iter);
     else if (func_type=="exp")
-        serialFastICAExp(n_sigs, max_iter, tol);
+        serialFastICAExp(n_sigs, tol, max_iter);
     else if (func_type=="cubic")
-        serialFastICACubic(n_sigs, max_iter, tol);
+        serialFastICACubic(n_sigs, tol, max_iter);
     else
         throw std::invalid_argument(func_type + " is not a valid function type option");
 }
