@@ -22,9 +22,13 @@ class Ica{
         std::unique_ptr<Mat> X,W,XX;
 
         void gsDecorr(Mat *w, int col_num);
+        void symDecorr();
+
         void serialFastICACosh(int n_sigs, double tol, int max_iter);
         void serialFastICAExp(int n_sigs, double tol, int max_iter);
         void serialFastICACubic(int n_sigs, double tol, int max_iter);
+
+        void parallelFastICACosh(int n_sigs, double tol, int max_iter);
 
     public:
 
@@ -48,7 +52,7 @@ class Ica{
 
         void sphering();
         void decompose(int n_sigs=2, bool rand_W=false, int seed=1);
-        void fastIca(int n_sigs=2, std::string func_type="cosh", int seed=1, double tol=1e-6, int max_iter=200);
+        void fastIca(int n_sigs=2, std::string func_type="cosh", bool paral = false, int seed=1, double tol=1e-6, int max_iter=200);
 };
 
 #endif
