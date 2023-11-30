@@ -1,5 +1,25 @@
 #include "ica.h"
 
+//Approimating Functions
+double gCosh(double x){
+    return tanh(x);
+}
+double g_derCosh(double x){
+    return 1.0 - std::pow(tanh(x),2.0);
+}
+double gGauss(double x){
+    return x*exp(x*x/-2.0);
+}
+double g_derGauss(double x){
+    return (1.0-x*x)*exp(x*x/-2.0);
+}
+double gCubic(double x){
+    return .25*pow(x,4);;
+}
+double g_derCubic(double x){
+    return pow(x,3);
+}
+
 Ica::Ica(Mat ini_X)
 {
     X = std::make_unique<Mat>();
@@ -104,14 +124,11 @@ void Ica::gsDecorr(Mat* w, int col_num)
 
 }
 
-void Ica::serialFastICACosh(int n_sigs, double tol, int max_iter)
+void Ica::serialFastICA(int n_sigs, double tol, int max_iter, std::function<double(double)> g, std::function<double(double)> g_der)
 {
     int M = X->cols(); 
     double M_inv = 1./M;
     Mat col_m = Mat::Ones(M,1); 
-
-    auto g = [=] (double x) {return tanh(x);};
-    auto g_der = [=] (double x) {return 1.0 - std::pow(tanh(x),2.0);};
 
     for(int n=0; n< n_sigs; n++)
     {
@@ -141,81 +158,7 @@ void Ica::serialFastICACosh(int n_sigs, double tol, int max_iter)
     *X = W->transpose() * *X;
 }
 
-void Ica::serialFastICAExp(int n_sigs, double tol, int max_iter)
-{
-    int M = X->cols(); 
-    double M_inv = 1./M;
-    Mat col_m = Mat::Ones(M,1); 
-
-    auto g = [=] (double x) {return x*exp(x*x/-2.0);};
-    auto g_der = [=] (double x) {return (1.0-x*x)*exp(x*x/-2.0);};
-
-    for(int n=0; n< n_sigs; n++)
-    {
-    
-        Mat w_p = W->col(n);
-
-        for(int i=0; i<max_iter; i++)
-        {
-            Mat w_proj = w_p.transpose() * *X; //w^T*X
-            Mat E1 = M_inv * *X * w_proj.unaryExpr(g).transpose(); //E{X*g(w^T*X)^T}
-            Mat E2 = M_inv*(w_proj.unaryExpr(g_der)*col_m)(0,0) * w_p ; //E{g'(w^T*X)}*w} 
-            w_proj = E1 - E2; 
-
-            gsDecorr(&w_proj, n);
-
-            //err = the absolute difference between 1 and the correlation between w_p(t) and w_p(t-1) 
-            double err = abs(abs((w_proj.transpose() * w_p)(0,0)) -1); 
-            w_p = w_proj;
-            if(err < tol)
-                break;
-            
-        }
-        W->col(n) = w_p;
-    }
-
-    std::cout << W->transpose() << std::endl;
-    *X = W->transpose() * *X;
-}
-
-void Ica::serialFastICACubic(int n_sigs, double tol, int max_iter)
-{
-    int M = X->cols(); 
-    double M_inv = 1./M;
-    Mat col_m = Mat::Ones(M,1); 
-
-    auto g = [=] (double x) {return .25*pow(x,4);};
-    auto g_der = [=] (double x) {return pow(x,3);};
-
-    for(int n=0; n< n_sigs; n++)
-    {
-    
-        Mat w_p = W->col(n);
-
-        for(int i=0; i<max_iter; i++)
-        {
-            Mat w_proj = w_p.transpose() * *X; //w^T*X
-            Mat E1 = M_inv * *X * w_proj.unaryExpr(g).transpose(); //E{X*g(w^T*X)^T}
-            Mat E2 = M_inv*(w_proj.unaryExpr(g_der)*col_m)(0,0) * w_p ; //E{g'(w^T*X)}*w} 
-            w_proj = E1 - E2; 
-
-            gsDecorr(&w_proj, n);
-
-            //err = the absolute difference between 1 and the correlation between w_p(t) and w_p(t-1) 
-            double err = abs(abs((w_proj.transpose() * w_p)(0,0)) -1); 
-            w_p = w_proj;
-            if(err < tol)
-                break;
-            
-        }
-        W->col(n) = w_p;
-    }
-
-    std::cout << W->transpose() << std::endl;
-    *X = W->transpose() * *X;
-}
-
-void Ica::parallelFastICACosh(int n_sigs, double tol, int max_iter)
+void Ica::parallelFastICA(int n_sigs, double tol, int max_iter, std::function<double(double)> g, std::function<double(double)> g_der)
 //Best seed 5
 {
     std::cout << "In parallel" << std::endl;
@@ -230,8 +173,8 @@ void Ica::parallelFastICACosh(int n_sigs, double tol, int max_iter)
     Mat D_to_neg_half = D.cwiseInverse().cwiseSqrt().asDiagonal();
     *W = V*D_to_neg_half*V.transpose() * *W;
 
-    auto g = [=] (double x) {return tanh(x);};
-    auto g_der = [=] (double x) {return 1.0 - std::pow(tanh(x),2.0);};
+    //auto g = [=] (double x) {return tanh(x);};
+    //auto g_der = [=] (double x) {return 1.0 - std::pow(tanh(x),2.0);};
 
     for(int i=0; i<10; i++)
     {
@@ -266,25 +209,29 @@ void Ica::fastIca(int n_sigs, std::string func_type, bool paral, int seed, doubl
     //Gen Random W
     randW(X->rows(), n_sigs, seed);
 
-    
+    //Func ptrs
+    std::function<double(double)> g;
+    std::function<double(double)> g_der;
 
-    /*Call different sub functions with the appropriate lambda functions for the approximating function selected. A more elegant 
-    solution would be to use function pointer std::function<double(double)> but comipler optimiser/linker issue caused some func ptr
-    have undefined reference to the function. This will be resolved at a later stage as the current focus is on having a complete 
-    working project prototype sooner rather than an elegant solution later.
-    */
-
-    if (paral == true)
-        parallelFastICACosh(n_sigs, tol, max_iter);
-
-    else if(func_type=="cosh")
-        serialFastICACosh(n_sigs, tol, max_iter);
-    else if (func_type=="exp")
-        serialFastICAExp(n_sigs, tol, max_iter);
-    else if (func_type=="cubic")
-        serialFastICACubic(n_sigs, tol, max_iter);
-    else
+    //Set func ptr to relavent approximating function
+    if(func_type=="cosh"){
+        g = gCosh;
+        g_der = g_derCosh;
+    }else if (func_type=="exp"){
+        g = gGauss;
+        g_der = g_derGauss;
+    }else if (func_type=="cubic"){
+        g = gCubic;
+        g_der = g_derCubic;
+    }else
         throw std::invalid_argument(func_type + " is not a valid function type option");
+
+    //Call parallel or serial version
+    if (paral == true)
+        parallelFastICA(n_sigs, tol, max_iter,g,g_der);
+    else{
+        serialFastICA(n_sigs, tol, max_iter, g, g_der);
+    }
 }
 
 

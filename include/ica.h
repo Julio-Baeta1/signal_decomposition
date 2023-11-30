@@ -24,11 +24,8 @@ class Ica{
         void gsDecorr(Mat *w, int col_num);
         void symDecorr();
 
-        void serialFastICACosh(int n_sigs, double tol, int max_iter);
-        void serialFastICAExp(int n_sigs, double tol, int max_iter);
-        void serialFastICACubic(int n_sigs, double tol, int max_iter);
-
-        void parallelFastICACosh(int n_sigs, double tol, int max_iter);
+        void serialFastICA(int n_sigs, double tol, int max_iter, std::function<double(double)> g, std::function<double(double)> g_der);
+        void parallelFastICA(int n_sigs, double tol, int max_iter, std::function<double(double)> g, std::function<double(double)> g_der);
 
     public:
 
