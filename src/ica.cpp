@@ -136,7 +136,6 @@ void Ica::serialFastICA(int n_sigs, double tol, int max_iter, std::function<doub
 
         for(int i=0; i<max_iter; i++)
         {
-            std::cout << "i: " <<n << std::endl << std::endl;
             Mat w_proj = w_p.transpose() * *X; //w^T*X
             Mat E1 = M_inv * *X * w_proj.unaryExpr(g).transpose(); //E{X*g(w^T*X)^T}
             Mat E2 = M_inv*(w_proj.unaryExpr(g_der)*col_m)(0,0) * w_p ; //E{g'(w^T*X)}*w} 
@@ -158,6 +157,16 @@ void Ica::serialFastICA(int n_sigs, double tol, int max_iter, std::function<doub
     *X = W->transpose() * *X;
 }
 
+void Ica::symDecorr()
+{
+    Eigen::EigenSolver<Mat> es(*W * W->transpose());
+    Eigen::VectorXd D = es.eigenvalues().real();
+    Mat V = es.eigenvectors().real();
+
+    Mat D_to_neg_half = D.cwiseInverse().cwiseSqrt().asDiagonal();
+    *W = V*D_to_neg_half*V.transpose() * *W;
+}
+
 void Ica::parallelFastICA(int n_sigs, double tol, int max_iter, std::function<double(double)> g, std::function<double(double)> g_der)
 //Best seed 5
 {
@@ -166,33 +175,24 @@ void Ica::parallelFastICA(int n_sigs, double tol, int max_iter, std::function<do
     double M_inv = 1./M;
     Mat col_m = Mat::Ones(M,1); 
 
-    Eigen::EigenSolver<Mat> es(*W * W->transpose());
-    Eigen::VectorXd D = es.eigenvalues().real();
-    Mat V = es.eigenvectors().real();
+    symDecorr();
 
-    Mat D_to_neg_half = D.cwiseInverse().cwiseSqrt().asDiagonal();
-    *W = V*D_to_neg_half*V.transpose() * *W;
-
-    //auto g = [=] (double x) {return tanh(x);};
-    //auto g_der = [=] (double x) {return 1.0 - std::pow(tanh(x),2.0);};
-
-    for(int i=0; i<10; i++)
+    for(int i=0; i<5; i++)
     {
-        for(int k=0; k < n_sigs; k++)
-        {
-            Mat w_p = W->col(k);
-            Mat w_proj = w_p.transpose() * *X; //w^T*X
-            Mat E1 = M_inv * *X * w_proj.unaryExpr(g).transpose(); //E{X*g(w^T*X)^T}
-            Mat E2 = M_inv*(w_proj.unaryExpr(g_der)*col_m)(0,0) * w_p ; //E{g'(w^T*X)}*w} 
-            W->col(k)= E1 - E2; 
-        }
+        Mat W_p = W->transpose() * *X; //W^T*X
+        Mat E1 = M_inv * *X * W_p.unaryExpr(g).transpose(); //E{X*g(W^T*X)^T} 
+        Mat E2 = *W; 
+        Mat E2b = M_inv*(W_p.unaryExpr(g_der)*col_m); //E{g'(W^T*X)} 
+        std::for_each(E2.colwise().begin(),E2.colwise().end(), //W.row(i) = E2b(i) * W.row(i)
+            [&](auto&& col){            
+                col.array() *= E2b.array(); 
+            }
+        );
+        
+        //Mat Wa = E1 - E2;
+        *W = E1 - E2;
 
-        Eigen::EigenSolver<Mat> es(*W *W->transpose());
-        Eigen::VectorXd D = es.eigenvalues().real();
-        Mat V = es.eigenvectors().real();
-
-        Mat D_to_neg_half = D.cwiseInverse().cwiseSqrt().asDiagonal();
-        *W = V*D_to_neg_half*V.transpose() * *W;
+        symDecorr();
     }
 
     std::cout << W->transpose() << std::endl;
