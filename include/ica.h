@@ -1,3 +1,6 @@
+// Original FastICA algorithm paper utilised https://www.cs.helsinki.fi/u/ahyvarin/papers/TNN99new.pdf
+// For parallel algorthim used https://journal.r-project.org/archive/2018/RJ-2018-046/RJ-2018-046.pdf
+
 #ifndef ICA_H
 #define ICA_H
 
@@ -22,7 +25,7 @@ class Ica{
         std::unique_ptr<Mat> X,W,XX;
 
         void gsDecorr(Mat *w, int col_num);
-        void symDecorr();
+        void symDecorr(Mat *w);
 
         void serialFastICA(int n_sigs, double tol, int max_iter, std::function<double(double)> g, std::function<double(double)> g_der);
         void parallelFastICA(int n_sigs, double tol, int max_iter, std::function<double(double)> g, std::function<double(double)> g_der);

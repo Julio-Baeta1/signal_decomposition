@@ -19,7 +19,8 @@ double gCubic(double x){
 double g_derCubic(double x){
     return pow(x,3);
 }
-
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//Constructors
 Ica::Ica(Mat ini_X)
 {
     X = std::make_unique<Mat>();
@@ -33,7 +34,8 @@ Ica::Ica(Mat* ini_ptr)
     W = std::make_unique<Mat>();
     XX = std::make_unique<Mat>(*ini_ptr);
 }
-
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//Set source Matrix
 void Ica::setSource(Mat new_X)
 {
     XX = std::make_unique<Mat>(new_X);
@@ -64,12 +66,12 @@ void Ica::setSourceFromFile(std::string filename)
         }
         i++;
     }
-    //std::shared_ptr<Mat> XX = std::make_shared<Mat>((SS*A.transpose()).transpose());
     Mat XX = SS*A.transpose();
     setSource(XX.transpose());
-    //setSource(XX);
 }
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+//Set initial mixing matrix
 void Ica::randW(int rows, int cols, int seed)
 {
     std::mt19937 r_gen (seed);
@@ -89,6 +91,8 @@ void Ica::setW(int rows, int cols, int seed, bool is_rand)
         W = std::make_unique<Mat>(Mat::Identity(rows,cols)) ;
 }
 
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+//Whiten data
 void Ica::sphering()
 {
     //centering
@@ -108,6 +112,7 @@ void Ica::sphering()
     *X = D_to_neg_half*V.transpose() * *X;
 }
 
+//Gram-Schmidt Decorrelation for serial deflationary fastICA
 void Ica::gsDecorr(Mat* w, int col_num)
 {
     //Gram Schimdt
@@ -124,6 +129,18 @@ void Ica::gsDecorr(Mat* w, int col_num)
 
 }
 
+//Symmetrical Decorrelation for parallel fastICA
+void Ica::symDecorr(Mat* w)
+{
+    Eigen::EigenSolver<Mat> es(*w * w->transpose());
+    Eigen::VectorXd D = es.eigenvalues().real();
+    Mat V = es.eigenvectors().real();
+
+    Mat D_to_neg_half = D.cwiseInverse().cwiseSqrt().asDiagonal();
+    *w = V*D_to_neg_half*V.transpose() * *w;
+}
+
+//Based on https://www.cs.helsinki.fi/u/ahyvarin/papers/TNN99new.pdf
 void Ica::serialFastICA(int n_sigs, double tol, int max_iter, std::function<double(double)> g, std::function<double(double)> g_der)
 {
     int M = X->cols(); 
@@ -157,16 +174,7 @@ void Ica::serialFastICA(int n_sigs, double tol, int max_iter, std::function<doub
     *X = W->transpose() * *X;
 }
 
-void Ica::symDecorr()
-{
-    Eigen::EigenSolver<Mat> es(*W * W->transpose());
-    Eigen::VectorXd D = es.eigenvalues().real();
-    Mat V = es.eigenvectors().real();
-
-    Mat D_to_neg_half = D.cwiseInverse().cwiseSqrt().asDiagonal();
-    *W = V*D_to_neg_half*V.transpose() * *W;
-}
-
+//Based on https://journal.r-project.org/archive/2018/RJ-2018-046/RJ-2018-046.pdf
 void Ica::parallelFastICA(int n_sigs, double tol, int max_iter, std::function<double(double)> g, std::function<double(double)> g_der)
 //Best seed 5
 {
@@ -175,9 +183,9 @@ void Ica::parallelFastICA(int n_sigs, double tol, int max_iter, std::function<do
     double M_inv = 1./M;
     Mat col_m = Mat::Ones(M,1); 
 
-    symDecorr();
+    symDecorr(W.get());
 
-    for(int i=0; i<5; i++)
+    for(int i=0; i<max_iter; i++)
     {
         Mat W_p = W->transpose() * *X; //W^T*X
         Mat E1 = M_inv * *X * W_p.unaryExpr(g).transpose(); //E{X*g(W^T*X)^T} 
@@ -189,10 +197,17 @@ void Ica::parallelFastICA(int n_sigs, double tol, int max_iter, std::function<do
             }
         );
         
-        //Mat Wa = E1 - E2;
-        *W = E1 - E2;
+        //Temp W
+        auto Wa = std::make_unique<Mat>(E1 - E2);
+        symDecorr(Wa.get());
 
-        symDecorr();
+        //Correlation between corresponding vectors in W and Wa, subtract 1 and get maximum correlation error
+        double max_err = ((Wa->transpose() * *W).diagonal().cwiseAbs() - Mat::Ones(n_sigs,1)).cwiseAbs().maxCoeff(); 
+        
+        W = std::move(Wa);
+        if (max_err < tol)
+            break;
+
     }
 
     std::cout << W->transpose() << std::endl;
